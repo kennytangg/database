@@ -1,0 +1,70 @@
+CREATE TABLE Specialization (
+    specialization_id INT PRIMARY KEY,
+    specialization_name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE Patient (
+    patient_id INT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    dob DATE,
+    gender VARCHAR(10),
+    phone_number VARCHAR(20),
+    email VARCHAR(100),
+    address VARCHAR(255)
+);
+
+CREATE TABLE Doctor (
+    doctor_id INT PRIMARY KEY,
+    specialization_id INT NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    phone_number VARCHAR(20),
+    email VARCHAR(100),
+    FOREIGN KEY (specialization_id) REFERENCES Specialization(specialization_id)
+);
+
+CREATE TABLE Schedule (
+    schedule_id INT PRIMARY KEY,
+    doctor_id INT NOT NULL,
+    available_day VARCHAR(20) NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_booked BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (doctor_id) REFERENCES Doctor(doctor_id)
+);
+
+CREATE TABLE Appointment (
+    appointment_id INT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    doctor_id INT NOT NULL,
+    schedule_id INT NOT NULL,
+    reason_for_visit VARCHAR(255),
+    appointment_datetime DATETIME NOT NULL,
+    status VARCHAR(20),
+    FOREIGN KEY (patient_id) REFERENCES Patient(patient_id),
+    FOREIGN KEY (doctor_id) REFERENCES Doctor(doctor_id),
+    FOREIGN KEY (schedule_id) REFERENCES Schedule(schedule_id)
+);
+
+CREATE TABLE Record (
+    patient_id INT NOT NULL,
+    appointment_id INT NOT NULL,
+    diagnosis VARCHAR(255),
+    prescription VARCHAR(255),
+    notes TEXT,
+    PRIMARY KEY (patient_id, appointment_id),
+    FOREIGN KEY (patient_id) REFERENCES Patient(patient_id),
+    FOREIGN KEY (appointment_id) REFERENCES Appointment(appointment_id)
+);
+
+CREATE TABLE Invoice (
+    patient_id INT NOT NULL,
+    appointment_id INT NOT NULL,
+    amount DECIMAL(10, 2),
+    issue_date DATE,
+    status VARCHAR(20),
+    PRIMARY KEY (patient_id, appointment_id),
+    FOREIGN KEY (patient_id) REFERENCES Patient(patient_id),
+    FOREIGN KEY (appointment_id) REFERENCES Appointment(appointment_id)
+);
