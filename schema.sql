@@ -1,3 +1,7 @@
+CREATE DATABASE clinicDB;
+
+USE clinicDB;
+
 CREATE TABLE Specialization (
     specialization_id INT PRIMARY KEY,
     specialization_name VARCHAR(100) NOT NULL
@@ -42,29 +46,23 @@ CREATE TABLE Appointment (
     reason_for_visit VARCHAR(255),
     appointment_datetime DATETIME NOT NULL,
     status VARCHAR(20),
-    FOREIGN KEY (patient_id) REFERENCES Patient(patient_id),
+    FOREIGN KEY (patient_id) REFERENCES Patient(patient_id) ON DELETE CASCADE,
     FOREIGN KEY (doctor_id) REFERENCES Doctor(doctor_id),
     FOREIGN KEY (schedule_id) REFERENCES Schedule(schedule_id)
 );
 
 CREATE TABLE Record (
-    patient_id INT NOT NULL,
-    appointment_id INT NOT NULL,
+    appointment_id INT PRIMARY KEY,
     diagnosis VARCHAR(255),
     prescription VARCHAR(255),
     notes TEXT,
-    PRIMARY KEY (patient_id, appointment_id),
-    FOREIGN KEY (patient_id) REFERENCES Patient(patient_id),
-    FOREIGN KEY (appointment_id) REFERENCES Appointment(appointment_id)
+    FOREIGN KEY (appointment_id) REFERENCES Appointment(appointment_id) ON DELETE CASCADE
 );
 
 CREATE TABLE Invoice (
-    patient_id INT NOT NULL,
-    appointment_id INT NOT NULL,
+    appointment_id INT PRIMARY KEY,
     amount DECIMAL(10, 2),
     issue_date DATE,
     status VARCHAR(20),
-    PRIMARY KEY (patient_id, appointment_id),
-    FOREIGN KEY (patient_id) REFERENCES Patient(patient_id),
-    FOREIGN KEY (appointment_id) REFERENCES Appointment(appointment_id)
+    FOREIGN KEY (appointment_id) REFERENCES Appointment(appointment_id) ON DELETE CASCADE
 );
