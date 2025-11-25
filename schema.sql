@@ -41,13 +41,11 @@ CREATE TABLE Schedule (
 CREATE TABLE Appointment (
     appointment_id INT PRIMARY KEY,
     patient_id INT NOT NULL,
-    doctor_id INT NOT NULL,
     schedule_id INT NOT NULL,
     reason_for_visit VARCHAR(255),
     appointment_datetime DATETIME NOT NULL,
     status VARCHAR(20),
     FOREIGN KEY (patient_id) REFERENCES Patient(patient_id) ON DELETE CASCADE,
-    FOREIGN KEY (doctor_id) REFERENCES Doctor(doctor_id),
     FOREIGN KEY (schedule_id) REFERENCES Schedule(schedule_id)
 );
 
