@@ -8,3 +8,9 @@ dependencies = [
     "mysql-connector-python>=9.5.0",
     "streamlit>=1.51.0",
 ]
+
+[dependency-groups]
+dev = [
+    "python-dotenv>=1.2.1",
+    "ruff>=0.14.6",
+]

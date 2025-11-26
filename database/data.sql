@@ -1,27 +1,27 @@
 -- specializations
-insert into specialization (specialization_id, specialization_name) values
-    (1, 'general practitioner'),
-    (2, 'dermatology'),
-    (3, 'dentist');
+INSERT INTO Specialization (specialization_id, specialization_name) VALUES
+    (1, 'General Practitioner'),
+    (2, 'Dermatology'),
+    (3, 'Dentist');
 
 -- patients
-insert into patient (patient_id, first_name, last_name, dob, gender, phone_number, email, address) values
-    (101, 'amy', 'kim', '1997-05-12', 'female', '081234567890', 'amy.kim@example.com', 'jl. merdeka 1'),
-    (102, 'mark', 'lee', '1989-08-22', 'male', '081234567891', 'mark.lee@example.com', 'jl. sudirman 2'),
-    (103, 'jacob', 'tan', '2002-03-15', 'male', '081234567892', 'jacob.tan@example.com', 'jl. thamrin 3'),
-    (104, 'michelle', 'ming', '2000-11-06', 'female', '081234567893', 'michelle.ming@example.com', 'jl. gatot subroto 4'),
-    (105, 'linda', 'wong', '1988-07-12', 'female', '081234567894', 'linda.wong@example.com', 'jl. mangga 5'),
-    (106, 'brian', 'simanjuntak', '1992-04-10', 'male', '081234567895', 'brian.simanjuntak@example.com', 'jl. bali 6');
+INSERT INTO Patient (patient_id, first_name, last_name, dob, gender, phone_number, email, address) VALUES
+    (101, 'Amy', 'Kim', '1997-05-12', 'Female', '081234567890', 'amy.kim@example.com', 'Jl. Merdeka 1'),
+    (102, 'Mark', 'Lee', '1989-08-22', 'Male', '081234567891', 'mark.lee@example.com', 'Jl. Sudirman 2'),
+    (103, 'Jacob', 'Tan', '2002-03-15', 'Male', '081234567892', 'jacob.tan@example.com', 'Jl. Thamrin 3'),
+    (104, 'Michelle', 'Ming', '2000-11-06', 'Female', '081234567893', 'michelle.ming@example.com', 'Jl. Gatot Subroto 4'),
+    (105, 'Linda', 'Wong', '1988-07-12', 'Female', '081234567894', 'linda.wong@example.com', 'Jl. Mangga 5'),
+    (106, 'Brian', 'Simanjuntak', '1992-04-10', 'Male', '081234567895', 'brian.simanjuntak@example.com', 'Jl. Bali 6');
 
 -- doctors
-insert into doctor (doctor_id, specialization_id, first_name, last_name, phone_number, email) values
-    (201, 1, 'dr. agung', 'putra', '081201234500', 'agungputra@clinic.com'),
-    (202, 1, 'dr. deni', 'wulandari', '081201234501', 'deniwulandari@clinic.com'),
-    (203, 2, 'dr. siti', 'hartono', '081201234502', 'sitihartono@clinic.com'),
-    (204, 3, 'dr. katrina', 'chandra', '081201234505', 'katrina.chandra@clinic.com');
+INSERT INTO Doctor (doctor_id, specialization_id, first_name, last_name, phone_number, email) values
+    (201, 1, 'dr. Agung', 'Putra', '081201234500', 'agungputra@clinic.com'),
+    (202, 1, 'dr. Deni', 'Wulandari', '081201234501', 'deniwulandari@clinic.com'),
+    (203, 2, 'dr. Siti', 'Hartono', '081201234502', 'sitihartono@clinic.com'),
+    (204, 3, 'dr. Katrina', 'Chandra', '081201234505', 'katrina.chandra@clinic.com');
 
 -- schedules
-insert into schedule (schedule_id, doctor_id, available_day, start_time, end_time, is_booked) values
+INSERT INTO Schedule (schedule_id, doctor_id, available_day, start_time, end_time, is_booked) values
     (301, 201, 'Monday', '09:00', '09:30', TRUE),
     (302, 201, 'Monday', '09:30', '10:00', TRUE),
     (303, 201, 'Monday', '10:00', '10:30', FALSE),
