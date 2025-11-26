@@ -1,6 +1,6 @@
 -- CREATE: Book a new appointment for a patient with a doctor and schedule
-INSERT INTO Appointment (appointment_id, patient_id, doctor_id, schedule_id, reason_for_visit, appointment_datetime, status)
-VALUES (407, 104, 202, 302, 'Follow-up for dermatitis', '2025-12-08 11:30', 'scheduled');
+INSERT INTO Appointment (appointment_id, patient_id, schedule_id, reason_for_visit, appointment_datetime, status)
+VALUES (407, 104, 302, 'Follow-up for dermatitis', '2025-12-08 11:30', 'scheduled');
 
 -- READ: List all appointments
 SELECT * FROM Appointment;
