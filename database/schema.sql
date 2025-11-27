@@ -8,18 +8,19 @@ CREATE TABLE Specialization (
 );
 
 CREATE TABLE Patient (
-    patient_id INT PRIMARY KEY,
+    patient_id INT PRIMARY KEY AUTO_INCREMENT,
     first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    dob DATE,
+    last_name VARCHAR(50),
+    dob DATE NOT NULL,
     gender VARCHAR(10),
-    phone_number VARCHAR(20),
+    phone_number VARCHAR(25) NOT NULL,
     email VARCHAR(100),
     address VARCHAR(255)
 );
 
+
 CREATE TABLE Doctor (
-    doctor_id INT PRIMARY KEY,
+    doctor_id INT PRIMARY KEY AUTO_INCREMENT,
     specialization_id INT NOT NULL,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
@@ -29,7 +30,7 @@ CREATE TABLE Doctor (
 );
 
 CREATE TABLE Schedule (
-    schedule_id INT PRIMARY KEY,
+    schedule_id INT PRIMARY KEY AUTO_INCREMENT,
     doctor_id INT NOT NULL,
     available_day VARCHAR(20) NOT NULL,
     start_time TIME NOT NULL,
@@ -39,7 +40,7 @@ CREATE TABLE Schedule (
 );
 
 CREATE TABLE Appointment (
-    appointment_id INT PRIMARY KEY,
+    appointment_id INT PRIMARY KEY AUTO_INCREMENT,
     patient_id INT NOT NULL,
     schedule_id INT NOT NULL,
     reason_for_visit VARCHAR(255),
