@@ -2,17 +2,34 @@ import streamlit as st
 from datetime import datetime
 from db_utils import run_query
 
-# st.title("Patient Portal – Clinic Demo")
 
-if "patient_view" not in st.session_state:
-    st.session_state["patient_view"] = "home"
+def initialize_session_state():
+    """Initialize patient view session state"""
+    if "patient_view" not in st.session_state:
+        st.session_state["patient_view"] = "home"
+    if "selected_patient_id" not in st.session_state:
+        st.session_state["selected_patient_id"] = None
+    if "search_results" not in st.session_state:
+        st.session_state["search_results"] = None
+    if "search_performed" not in st.session_state:
+        st.session_state["search_performed"] = False
 
-# --- HOME VIEW ---
-if st.session_state["patient_view"] == "home":
+
+def back_to_home_button():
+    """Render back button and handle navigation to home"""
+    if st.button("Back to Home"):
+        st.session_state["patient_view"] = "home"
+        st.session_state["selected_patient_id"] = None
+        st.session_state["search_results"] = None
+        st.session_state["search_performed"] = False
+        st.rerun()
+
+
+def render_home_view():
     st.header("Welcome!")
     st.write("What would you like to do?")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("Register as a Patient", use_container_width=True):
             st.session_state["patient_view"] = "register"
@@ -21,19 +38,20 @@ if st.session_state["patient_view"] == "home":
         if st.button("Create an Appointment", use_container_width=True):
             st.session_state["patient_view"] = "book"
             st.rerun()
+    with col3:
+        if st.button("Cancel an Appointment", use_container_width=True):
+            st.session_state["patient_view"] = "cancel"
+            st.rerun()
 
-# --- REGISTER VIEW ---
-elif st.session_state["patient_view"] == "register":
-    if st.button("Back to Home"):
-        st.session_state["patient_view"] = "home"
-        st.rerun()
+
+def render_registration_form():
+    """Render patient registration form"""
+    back_to_home_button()
 
     st.subheader("Patient Registration")
     st.write("Please fill in your information below.")
 
-    with st.form(
-        "register_form", clear_on_submit=True
-    ):  
+    with st.form("register_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
 
         with col1:
@@ -61,218 +79,351 @@ elif st.session_state["patient_view"] == "register":
         )
 
     if submitted:
-        if not fname or not lname or not dob or not phone:
-            st.error(
-                "Please fill in all required fields: First Name, Last Name, Date of Birth and Phone Number."
-            )
-        else:
-            gender_value = None if gender in ["Select gender", "Unknown"] else gender
-            email_value = email if email else None
-            address_value = address if address else None
+        handle_registration_submission(fname, lname, dob, phone, gender, email, address)
 
-            query = """
-                INSERT INTO Patient (first_name, last_name, dob, gender, phone_number, email, address)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+
+def handle_registration_submission(fname, lname, dob, phone, gender, email, address):
+    """Handle patient registration form submission"""
+    if not fname or not lname or not dob or not phone:
+        st.error(
+            "Please fill in all required fields: First Name, Last Name, Date of Birth and Phone Number."
+        )
+        return
+
+    gender_value = None if gender in ["Select gender", "Unknown"] else gender
+    email_value = email if email else None
+    address_value = address if address else None
+
+    query = """
+        INSERT INTO Patient (first_name, last_name, dob, gender, phone_number, email, address)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """
+    params = (fname, lname, dob, gender_value, phone, email_value, address_value)
+
+    try:
+        run_query(query, params)
+        st.success("Registration complete! Welcome to our clinic.")
+        st.balloons()
+    except Exception as e:
+        st.error(f"Registration failed: {e}")
+
+
+def render_patient_appointments_for_cancel():
+    """Show this patient's upcoming/scheduled appointments and allow cancel."""
+    patient_id = st.session_state["selected_patient_id"]
+    patient_name = st.session_state.get("selected_patient_name", "Unknown patient")
+
+    st.markdown(f"### Appointments for {patient_name}")
+
+    appointments = run_query(
+        """
+        SELECT 
+            a.appointment_id,
+            a.appointment_datetime,
+            a.status,
+            a.schedule_id,
+            s.available_day,
+            s.start_time,
+            s.end_time,
+            d.first_name AS doctor_first_name,
+            d.last_name AS doctor_last_name
+        FROM Appointment a
+        JOIN Schedule s ON a.schedule_id = s.schedule_id
+        JOIN Doctor d ON s.doctor_id = d.doctor_id
+        WHERE a.patient_id = %s
+          AND a.status = 'scheduled'
+        ORDER BY a.appointment_datetime
+        """,
+        (patient_id,),
+        fetch=True,
+    )
+
+    if not appointments:
+        st.info("You have no scheduled appointments to cancel.")
+        if st.button("Back to Patient Selection"):
+            st.session_state["selected_patient_id"] = None
+            st.session_state["selected_patient_name"] = None
+            st.rerun()
+        return
+
+    for appt in appointments:
+        with st.container():
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.write(
+                    f"**{appt['available_day']} {appt['start_time']}–{appt['end_time']}**"
+                )
+                st.caption(
+                    f"Doctor: Dr. {appt['doctor_first_name']} {appt['doctor_last_name']} "
+                    f"| Status: {appt['status']}"
+                )
+                st.caption(f"Appointment at: {appt['appointment_datetime']}")
+            with col2:
+                if st.button(
+                    "Cancel",
+                    key=f"cancel_{appt['appointment_id']}",
+                    use_container_width=True,
+                ):
+                    handle_cancel_appointment(appt)
+            st.divider()
+
+
+def handle_cancel_appointment(appt_row):
+    """Apply cancellation logic and update DB."""
+    appt_id = appt_row["appointment_id"]
+    schedule_id = appt_row["schedule_id"]
+
+    try:
+        # Mark appointment as cancelled
+        run_query(
+            "UPDATE Appointment SET status = 'cancelled' WHERE appointment_id = %s",
+            (appt_id,),
+        )
+
+        # Free the schedule slot
+        run_query(
+            "UPDATE Schedule SET is_booked = FALSE WHERE schedule_id = %s",
+            (schedule_id,),
+        )
+
+        st.success("Appointment successfully cancelled. The slot is now available.")
+        # Optionally show DB effect by reloading list
+        st.rerun()
+    except Exception as e:
+        st.error(f"Failed to cancel appointment: {e}")
+
+
+def render_patient_search():
+    """Render patient search"""
+    st.write("Find your record by date of birth.")
+
+    dob_search = st.date_input(
+        "Date of Birth",
+        min_value=datetime(1900, 1, 1),
+        max_value=datetime(2025, 12, 31),
+        value=datetime(2000, 1, 1),
+    )
+
+    if st.button("Search Patients", use_container_width=True):
+        patients = run_query(
             """
-            params = (
-                fname,
-                lname,
-                dob,
-                gender_value,
-                phone,
-                email_value,
-                address_value,
-            )
-
-            try:
-                run_query(query, params)
-                st.success("Registration complete! Welcome to our clinic.")
-                st.balloons()
-            except Exception as e:
-                st.error(f"Registration failed: {e}")
-
-# --- BOOK APPOINTMENT VIEW ---
-elif st.session_state["patient_view"] == "book":
-    # Initialize sub-state for booking flow
-    if "selected_patient_id" not in st.session_state:
-        st.session_state["selected_patient_id"] = None
-    if "search_results" not in st.session_state:
-        st.session_state["search_results"] = None
-    if "search_performed" not in st.session_state:
-        st.session_state["search_performed"] = False
-
-    if st.button("Back to Home"):
-        st.session_state["patient_view"] = "home"
-        st.session_state["selected_patient_id"] = None
-        st.session_state["search_results"] = None
-        st.session_state["search_performed"] = False
+            SELECT patient_id, first_name, last_name, phone_number, email
+            FROM Patient
+            WHERE dob = %s
+            ORDER BY first_name, last_name
+            """,
+            (dob_search,),
+            fetch=True,
+        )
+        st.session_state["search_results"] = patients
+        st.session_state["search_performed"] = True
         st.rerun()
 
+    if st.session_state["search_performed"]:
+        patient_search_results()
+
+
+def patient_search_results():
+    """Display patient search results"""
+    patients = st.session_state["search_results"]
+
+    if patients:
+        st.success(f"Found {len(patients)} patient(s).")
+        for p in patients:
+            with st.container():
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.write(f"**{p['first_name']} {p['last_name']}**")
+                    st.caption(
+                        f"Phone: {p['phone_number']} | Email: {p['email'] or 'Not provided'}"
+                    )
+                with col2:
+                    if st.button(
+                        "Select",
+                        key=f"select_{p['patient_id']}",
+                        use_container_width=True,
+                    ):
+                        st.session_state["selected_patient_id"] = p["patient_id"]
+                        st.session_state["selected_patient_name"] = (
+                            f"{p['first_name']} {p['last_name']}"
+                        )
+                        st.session_state["search_results"] = None
+                        st.session_state["search_performed"] = False
+                        st.rerun()
+                st.divider()
+    else:
+        st.warning("No patients found with this date of birth.")
+
+
+def render_appointment_booking():
+    """Render appointment booking interface for selected patient."""
+    st.write("Choose a doctor and available time.")
+
+    specs = run_query("SELECT * FROM Specialization", fetch=True)
+    if not specs:
+        st.error("No specializations found in the system.")
+        return
+
+    spec_choices = {
+        row["specialization_name"]: row["specialization_id"] for row in specs
+    }
+    spec_selected = st.selectbox("Choose Specialization", list(spec_choices.keys()))
+    spec_id = spec_choices[spec_selected]
+
+    doctors = get_doctors_by_specialization(spec_id)
+    if not doctors:
+        st.warning("No doctors available for this specialization.")
+        return
+
+    selected_doctor = select_doctor(doctors)
+    slots = get_available_slots(selected_doctor["doctor_id"])
+
+    if not slots:
+        st.info("No available time slots for this doctor.")
+        return
+
+    selected_slot = select_time_slot(slots)
+    reason = st.text_input("Reason for visit")
+
+    if st.button("Confirm Appointment", use_container_width=True):
+        handle_appointment_confirmation(selected_slot, reason)
+
+
+def get_doctors_by_specialization(spec_id):
+    """Fetch doctors for a given specialization."""
+    return run_query(
+        """
+        SELECT doctor_id, first_name, last_name
+        FROM Doctor
+        WHERE specialization_id = %s
+        ORDER BY first_name, last_name
+        """,
+        (spec_id,),
+        fetch=True,
+    )
+
+
+def select_doctor(doctors):
+    """Render doctor selection dropdown and return selected doctor."""
+    doctor_labels = [f"Dr. {d['first_name']} {d['last_name']}" for d in doctors]
+    doctor_selected = st.selectbox("Choose Doctor", doctor_labels, key="doctor_select")
+    doc_idx = doctor_labels.index(doctor_selected)
+    return doctors[doc_idx]
+
+
+def get_available_slots(doctor_id):
+    """Fetch available time slots for a doctor."""
+    return run_query(
+        """
+        SELECT schedule_id, available_day, start_time, end_time
+        FROM Schedule
+        WHERE doctor_id = %s AND is_booked = FALSE
+        ORDER BY available_day, start_time
+        """,
+        (doctor_id,),
+        fetch=True,
+    )
+
+
+def select_time_slot(slots):
+    """Render time slot selection dropdown and return selected slot."""
+    slot_labels = [
+        f"{row['available_day']} {row['start_time']}–{row['end_time']}" for row in slots
+    ]
+    slot_selected = st.selectbox(
+        "Choose Available Time Slot", slot_labels, key="slot_select"
+    )
+    s_idx = slot_labels.index(slot_selected)
+    return slots[s_idx]
+
+
+def handle_appointment_confirmation(selected_slot, reason):
+    """Handle appointment confirmation and database updates."""
+    appointment_datetime = f"2025-12-01 {selected_slot['start_time']}"
+
+    try:
+        # Insert appointment
+        run_query(
+            """
+            INSERT INTO Appointment (patient_id, schedule_id, reason_for_visit, appointment_datetime, status)
+            VALUES (%s, %s, %s, %s, 'scheduled')
+            """,
+            (
+                st.session_state["selected_patient_id"],
+                selected_slot["schedule_id"],
+                reason,
+                appointment_datetime,
+            ),
+        )
+
+        # Mark schedule as booked
+        run_query(
+            "UPDATE Schedule SET is_booked = TRUE WHERE schedule_id = %s",
+            (selected_slot["schedule_id"],),
+        )
+
+        st.success("Appointment Successfully Booked!")
+        st.balloons()
+
+        display_appointment_summary(selected_slot, reason)
+
+        # Reset state
+        st.session_state["selected_patient_id"] = None
+        st.session_state["search_results"] = []
+
+    except Exception as e:
+        st.error(f"Appointment booking failed: {e}")
+
+
+def display_appointment_summary(selected_slot, reason):
+    """Display appointment confirmation summary."""
+    st.info(
+        f"**Appointment Details:**\n\n"
+        f"Patient: {st.session_state['selected_patient_name']}\n\n"
+        f"Date & Time: {selected_slot['available_day']} at {selected_slot['start_time']}\n\n"
+        f"Reason: {reason or '-'}\n\n"
+        f"Please arrive 15 minutes before your appointment time."
+    )
+
+
+def render_booking_view():
+    """Render booking view with patient search or appointment booking"""
+    back_to_home_button()
     st.subheader("Book an Appointment")
 
     if st.session_state["selected_patient_id"] is None:
-        st.write("Find your record by date of birth.")
-
-        dob_search = st.date_input(
-            "Date of Birth",
-            min_value=datetime(1900, 1, 1),
-            max_value=datetime(2025, 12, 31),
-            value=datetime(2000, 1, 1),
-        )
-
-        if st.button("Search Patients", use_container_width=True):
-            patients = run_query(
-                """
-                SELECT patient_id, first_name, last_name, phone_number, email
-                FROM Patient
-                WHERE dob = %s
-                ORDER BY first_name, last_name
-                """,
-                (dob_search,),
-                fetch=True,
-            )
-            st.session_state["search_results"] = patients
-            st.session_state["search_performed"] = True
-            st.rerun()
-
-        # Show results only if search was performed
-        if st.session_state["search_performed"]:
-            patients = st.session_state["search_results"]
-            if patients:
-                st.success(f"Found {len(patients)} patient(s).")
-                for p in patients:
-                    with st.container():
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.write(f"**{p['first_name']} {p['last_name']}**")
-                            st.caption(
-                                f"Phone: {p['phone_number']} | Email: {p['email'] or 'Not provided'}"
-                            )
-                        with col2:
-                            if st.button(
-                                "Select",
-                                key=f"select_{p['patient_id']}",
-                                use_container_width=True,
-                            ):
-                                st.session_state["selected_patient_id"] = p["patient_id"]
-                                st.session_state["selected_patient_name"] = (
-                                    f"{p['first_name']} {p['last_name']}"
-                                )
-                                # Clear search state
-                                st.session_state["search_results"] = None
-                                st.session_state["search_performed"] = False
-                                st.rerun()
-                        st.divider()
-            else:
-                st.warning("No patients found with this date of birth.")
-
-
+        render_patient_search()
     else:
-        st.write("Choose a doctor and available time.")
+        render_appointment_booking()
 
-        specs = run_query("SELECT * FROM Specialization", fetch=True)
-        if not specs:
-            st.error("No specializations found in the system.")
-        else:
-            spec_choices = {
-                row["specialization_name"]: row["specialization_id"] for row in specs
-            }
-            spec_selected = st.selectbox(
-                "Choose Specialization", list(spec_choices.keys())
-            )
-            spec_id = spec_choices[spec_selected]
 
-            # Choose doctor
-            doctors = run_query(
-                """
-                SELECT doctor_id, first_name, last_name
-                FROM Doctor
-                WHERE specialization_id = %s
-                ORDER BY first_name, last_name
-                """,
-                (spec_id,),
-                fetch=True,
-            )
+def render_cancel_view():
+    """Cancel an existing appointment"""
+    back_to_home_button()
+    st.subheader("Cancel an Appointment")
 
-            if not doctors:
-                st.warning("No doctors available for this specialization.")
-            else:
-                doctor_labels = [
-                    f"Dr. {d['first_name']} {d['last_name']}" for d in doctors
-                ]
-                doctor_selected = st.selectbox(
-                    "Choose Doctor", doctor_labels, key="doctor_select"
-                )
-                doc_idx = doctor_labels.index(doctor_selected)
-                selected_doctor = doctors[doc_idx]
+    # Step 1: pick patient (reuse same pattern as booking)
+    if st.session_state["selected_patient_id"] is None:
+        render_patient_search()  # same search-by-DOB UI
+    else:
+        render_patient_appointments_for_cancel()
 
-                # Available slots for this doctor
-                slots = run_query(
-                    """
-                    SELECT schedule_id, available_day, start_time, end_time
-                    FROM Schedule
-                    WHERE doctor_id = %s AND is_booked = FALSE
-                    ORDER BY available_day, start_time
-                    """,
-                    (selected_doctor["doctor_id"],),
-                    fetch=True,
-                )
 
-                if not slots:
-                    st.info("No available time slots for this doctor.")
-                else:
-                    slot_labels = [
-                        f"{row['available_day']} {row['start_time']}–{row['end_time']}"
-                        for row in slots
-                    ]
-                    slot_selected = st.selectbox(
-                        "Choose Available Time Slot", slot_labels, key="slot_select"
-                    )
-                    s_idx = slot_labels.index(slot_selected)
-                    selected_slot = slots[s_idx]
+def main():
+    initialize_session_state()
 
-                    reason = st.text_input("Reason for visit")
+    match st.session_state["patient_view"]:
+        case "home":
+            render_home_view()
+        case "register":
+            render_registration_form()
+        case "book":
+            render_booking_view()
+        case "cancel":
+            render_cancel_view()
+        case _:
+            st.error("Unknown view")
 
-                    if st.button("Confirm Appointment", use_container_width=True):
-                        appointment_datetime = (
-                            f"2025-12-01 {selected_slot['start_time']}"
-                        )
-                        
-                        try:
-                            # Insert appointment
-                            run_query(
-                                """
-                                INSERT INTO Appointment (patient_id, schedule_id, reason_for_visit, appointment_datetime, status)
-                                VALUES (%s, %s, %s, %s, 'scheduled')
-                                """,
-                                (
-                                    st.session_state["selected_patient_id"],
-                                    selected_slot["schedule_id"],
-                                    reason,
-                                    appointment_datetime,
-                                ),
-                            )
-                            # Mark schedule as booked
-                            run_query(
-                                "UPDATE Schedule SET is_booked = TRUE WHERE schedule_id = %s",
-                                (selected_slot["schedule_id"],),
-                            )
-                            
-                            st.success("Appointment Successfully Booked!")
-                            st.balloons()
-                            
-                            # Show appointment summary
-                            st.info(
-                                f"**Appointment Details:**\n\n"
-                                f"Patient: {st.session_state['selected_patient_name']}\n\n"
-                                f"️Doctor: {doctor_selected}\n\n"
-                                f"Date & Time: {selected_slot['available_day']} at {selected_slot['start_time']}\n\n"
-                                f"Reason: {reason or '-'}\n\n"
-                                f"Please arrive 15 minutes before your appointment time."
-                            )
-                            
-                            st.session_state["selected_patient_id"] = None
-                            st.session_state["search_results"] = []
-                            
-                        except Exception as e:
-                            st.error(f"Appointment booking failed: {e}")
+
+if __name__ == "__main__":
+    main()
