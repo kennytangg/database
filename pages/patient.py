@@ -7,46 +7,53 @@ def initialize_session_state():
     """Initialize patient view session state"""
     if "patient_view" not in st.session_state:
         st.session_state["patient_view"] = "home"
-    if "selected_patient_id" not in st.session_state:
-        st.session_state["selected_patient_id"] = None
+    if "logged_in_patient_id" not in st.session_state:
+        st.session_state["logged_in_patient_id"] = None
+    if "logged_in_patient_name" not in st.session_state:
+        st.session_state["logged_in_patient_name"] = None
     if "search_results" not in st.session_state:
         st.session_state["search_results"] = None
     if "search_performed" not in st.session_state:
         st.session_state["search_performed"] = False
 
 
-def back_to_home_button():
-    """Render back button and handle navigation to home"""
-    if st.button("Back to Home"):
-        st.session_state["patient_view"] = "home"
-        st.session_state["selected_patient_id"] = None
-        st.session_state["search_results"] = None
-        st.session_state["search_performed"] = False
+def logout():
+    """Clear patient login session"""
+    st.session_state["logged_in_patient_id"] = None
+    st.session_state["logged_in_patient_name"] = None
+    st.session_state["patient_view"] = "home"
+    st.session_state["search_results"] = None
+    st.session_state["search_performed"] = False
+
+
+def back_to_dashboard_button():
+    """Navigate back to patient dashboard"""
+    if st.button("Back to Dashboard"):
+        st.session_state["patient_view"] = "dashboard"
         st.rerun()
 
 
 def render_home_view():
-    st.header("Welcome!")
-    st.write("What would you like to do?")
+    """Home view with Register or Login options"""
+    st.header("Welcome to the Clinic!")
+    st.write("Please choose an option below:")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         if st.button("Register as a Patient", use_container_width=True):
             st.session_state["patient_view"] = "register"
             st.rerun()
     with col2:
-        if st.button("Create an Appointment", use_container_width=True):
-            st.session_state["patient_view"] = "book"
-            st.rerun()
-    with col3:
-        if st.button("Cancel an Appointment", use_container_width=True):
-            st.session_state["patient_view"] = "cancel"
+        if st.button("Login as a Patient", use_container_width=True):
+            st.session_state["patient_view"] = "login"
             st.rerun()
 
 
 def render_registration_form():
     """Render patient registration form"""
-    back_to_home_button()
+    if st.button("Back to Home"):
+        st.session_state["patient_view"] = "home"
+        st.rerun()
 
     st.subheader("Patient Registration")
     st.write("Please fill in your information below.")
@@ -104,98 +111,19 @@ def handle_registration_submission(fname, lname, dob, phone, gender, email, addr
         run_query(query, params)
         st.success("Registration complete! Welcome to our clinic.")
         st.balloons()
+        st.info("You can now login using your date of birth.")
     except Exception as e:
         st.error(f"Registration failed: {e}")
 
 
-def render_patient_appointments_for_cancel():
-    """Show this patient's upcoming/scheduled appointments and allow cancel."""
-    patient_id = st.session_state["selected_patient_id"]
-    patient_name = st.session_state.get("selected_patient_name", "Unknown patient")
-
-    st.markdown(f"### Appointments for {patient_name}")
-
-    appointments = run_query(
-        """
-        SELECT 
-            a.appointment_id,
-            a.appointment_datetime,
-            a.status,
-            a.schedule_id,
-            s.available_day,
-            s.start_time,
-            s.end_time,
-            d.first_name AS doctor_first_name,
-            d.last_name AS doctor_last_name
-        FROM Appointment a
-        JOIN Schedule s ON a.schedule_id = s.schedule_id
-        JOIN Doctor d ON s.doctor_id = d.doctor_id
-        WHERE a.patient_id = %s
-          AND a.status = 'scheduled'
-        ORDER BY a.appointment_datetime
-        """,
-        (patient_id,),
-        fetch=True,
-    )
-
-    if not appointments:
-        st.info("You have no scheduled appointments to cancel.")
-        if st.button("Back to Patient Selection"):
-            st.session_state["selected_patient_id"] = None
-            st.session_state["selected_patient_name"] = None
-            st.rerun()
-        return
-
-    for appt in appointments:
-        with st.container():
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.write(
-                    f"**{appt['available_day']} {appt['start_time']}–{appt['end_time']}**"
-                )
-                st.caption(
-                    f"Doctor: Dr. {appt['doctor_first_name']} {appt['doctor_last_name']} "
-                    f"| Status: {appt['status']}"
-                )
-                st.caption(f"Appointment at: {appt['appointment_datetime']}")
-            with col2:
-                if st.button(
-                    "Cancel",
-                    key=f"cancel_{appt['appointment_id']}",
-                    use_container_width=True,
-                ):
-                    handle_cancel_appointment(appt)
-            st.divider()
-
-
-def handle_cancel_appointment(appt_row):
-    """Apply cancellation logic and update DB."""
-    appt_id = appt_row["appointment_id"]
-    schedule_id = appt_row["schedule_id"]
-
-    try:
-        # Mark appointment as cancelled
-        run_query(
-            "UPDATE Appointment SET status = 'cancelled' WHERE appointment_id = %s",
-            (appt_id,),
-        )
-
-        # Free the schedule slot
-        run_query(
-            "UPDATE Schedule SET is_booked = FALSE WHERE schedule_id = %s",
-            (schedule_id,),
-        )
-
-        st.success("Appointment successfully cancelled. The slot is now available.")
-        # Optionally show DB effect by reloading list
+def render_login_view():
+    """Login view - patient search by DOB"""
+    if st.button("Back to Home"):
+        st.session_state["patient_view"] = "home"
         st.rerun()
-    except Exception as e:
-        st.error(f"Failed to cancel appointment: {e}")
 
-
-def render_patient_search():
-    """Render patient search"""
-    st.write("Find your record by date of birth.")
+    st.subheader("Patient Login")
+    st.write("Find your account by entering your date of birth.")
 
     dob_search = st.date_input(
         "Date of Birth",
@@ -204,7 +132,7 @@ def render_patient_search():
         value=datetime(2000, 1, 1),
     )
 
-    if st.button("Search Patients", use_container_width=True):
+    if st.button("Search", use_container_width=True):
         patients = run_query(
             """
             SELECT patient_id, first_name, last_name, phone_number, email
@@ -220,11 +148,11 @@ def render_patient_search():
         st.rerun()
 
     if st.session_state["search_performed"]:
-        patient_search_results()
+        display_login_results()
 
 
-def patient_search_results():
-    """Display patient search results"""
+def display_login_results():
+    """Display patient search results for login"""
     patients = st.session_state["search_results"]
 
     if patients:
@@ -239,24 +167,59 @@ def patient_search_results():
                     )
                 with col2:
                     if st.button(
-                        "Select",
-                        key=f"select_{p['patient_id']}",
+                        "Login",
+                        key=f"login_{p['patient_id']}",
                         use_container_width=True,
                     ):
-                        st.session_state["selected_patient_id"] = p["patient_id"]
-                        st.session_state["selected_patient_name"] = (
+                        # Set logged in patient
+                        st.session_state["logged_in_patient_id"] = p["patient_id"]
+                        st.session_state["logged_in_patient_name"] = (
                             f"{p['first_name']} {p['last_name']}"
                         )
                         st.session_state["search_results"] = None
                         st.session_state["search_performed"] = False
+                        st.session_state["patient_view"] = "dashboard"
                         st.rerun()
                 st.divider()
     else:
         st.warning("No patients found with this date of birth.")
 
 
+def render_patient_dashboard():
+    """Patient dashboard after login"""
+    patient_name = st.session_state["logged_in_patient_name"]
+
+    st.header(f"Welcome, {patient_name}!")
+    st.write("What would you like to do today?")
+
+    # Logout button in sidebar or top
+    if st.button("Logout", type="primary"):
+        logout()
+        st.rerun()
+
+    st.divider()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Book an Appointment", use_container_width=True):
+            st.session_state["patient_view"] = "book"
+            st.rerun()
+    with col2:
+        if st.button("Cancel an Appointment", use_container_width=True):
+            st.session_state["patient_view"] = "cancel"
+            st.rerun()
+
+
+def render_booking_view():
+    """Render appointment booking - no patient search needed"""
+    back_to_dashboard_button()
+    st.subheader("Book an Appointment")
+
+    render_appointment_booking()
+
+
 def render_appointment_booking():
-    """Render appointment booking interface for selected patient."""
+    """Render appointment booking interface for logged-in patient."""
     st.write("Choose a doctor and available time.")
 
     specs = run_query("SELECT * FROM Specialization", fetch=True)
@@ -349,7 +312,7 @@ def handle_appointment_confirmation(selected_slot, reason):
             VALUES (%s, %s, %s, %s, 'scheduled')
             """,
             (
-                st.session_state["selected_patient_id"],
+                st.session_state["logged_in_patient_id"],
                 selected_slot["schedule_id"],
                 reason,
                 appointment_datetime,
@@ -367,10 +330,6 @@ def handle_appointment_confirmation(selected_slot, reason):
 
         display_appointment_summary(selected_slot, reason)
 
-        # Reset state
-        st.session_state["selected_patient_id"] = None
-        st.session_state["search_results"] = []
-
     except Exception as e:
         st.error(f"Appointment booking failed: {e}")
 
@@ -379,50 +338,128 @@ def display_appointment_summary(selected_slot, reason):
     """Display appointment confirmation summary."""
     st.info(
         f"**Appointment Details:**\n\n"
-        f"Patient: {st.session_state['selected_patient_name']}\n\n"
+        f"Patient: {st.session_state['logged_in_patient_name']}\n\n"
         f"Date & Time: {selected_slot['available_day']} at {selected_slot['start_time']}\n\n"
         f"Reason: {reason or '-'}\n\n"
         f"Please arrive 15 minutes before your appointment time."
     )
 
 
-def render_booking_view():
-    """Render booking view with patient search or appointment booking"""
-    back_to_home_button()
-    st.subheader("Book an Appointment")
-
-    if st.session_state["selected_patient_id"] is None:
-        render_patient_search()
-    else:
-        render_appointment_booking()
-
-
 def render_cancel_view():
     """Cancel an existing appointment"""
-    back_to_home_button()
+    back_to_dashboard_button()
     st.subheader("Cancel an Appointment")
 
-    # Step 1: pick patient (reuse same pattern as booking)
-    if st.session_state["selected_patient_id"] is None:
-        render_patient_search()  # same search-by-DOB UI
-    else:
-        render_patient_appointments_for_cancel()
+    render_patient_appointments_for_cancel()
+
+
+def render_patient_appointments_for_cancel():
+    """Show logged-in patient's upcoming/scheduled appointments and allow cancel."""
+    patient_id = st.session_state["logged_in_patient_id"]
+    patient_name = st.session_state["logged_in_patient_name"]
+
+    st.markdown(f"### Your Scheduled Appointments")
+
+    appointments = run_query(
+        """
+        SELECT 
+            a.appointment_id,
+            a.appointment_datetime,
+            a.status,
+            a.schedule_id,
+            a.reason_for_visit,
+            s.available_day,
+            s.start_time,
+            s.end_time,
+            d.first_name AS doctor_first_name,
+            d.last_name AS doctor_last_name
+        FROM Appointment a
+        JOIN Schedule s ON a.schedule_id = s.schedule_id
+        JOIN Doctor d ON s.doctor_id = d.doctor_id
+        WHERE a.patient_id = %s
+          AND a.status = 'scheduled'
+        ORDER BY a.appointment_datetime
+        """,
+        (patient_id,),
+        fetch=True,
+    )
+
+    if not appointments:
+        st.info("You have no scheduled appointments to cancel.")
+        return
+
+    for appt in appointments:
+        with st.container():
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.write(
+                    f"**{appt['available_day']} at {appt['start_time']}–{appt['end_time']}**"
+                )
+                st.caption(
+                    f"Doctor: Dr. {appt['doctor_first_name']} {appt['doctor_last_name']}"
+                )
+                st.caption(f"Reason: {appt['reason_for_visit'] or 'Not specified'}")
+            with col2:
+                if st.button(
+                    "Cancel",
+                    key=f"cancel_{appt['appointment_id']}",
+                    use_container_width=True,
+                    type="primary",
+                ):
+                    handle_cancel_appointment(appt)
+            st.divider()
+
+
+def handle_cancel_appointment(appt_row):
+    """Apply cancellation logic and update DB."""
+    appt_id = appt_row["appointment_id"]
+    schedule_id = appt_row["schedule_id"]
+
+    try:
+        # Mark appointment as cancelled
+        run_query(
+            "UPDATE Appointment SET status = 'cancelled' WHERE appointment_id = %s",
+            (appt_id,),
+        )
+
+        # Free the schedule slot
+        run_query(
+            "UPDATE Schedule SET is_booked = FALSE WHERE schedule_id = %s",
+            (schedule_id,),
+        )
+
+        st.success("Appointment successfully cancelled. The slot is now available.")
+        st.rerun()
+    except Exception as e:
+        st.error(f"Failed to cancel appointment: {e}")
 
 
 def main():
+    """Main routing function"""
     initialize_session_state()
 
-    match st.session_state["patient_view"]:
-        case "home":
-            render_home_view()
-        case "register":
-            render_registration_form()
-        case "book":
-            render_booking_view()
-        case "cancel":
-            render_cancel_view()
-        case _:
-            st.error("Unknown view")
+    # If user is logged in, show dashboard-based views
+    if st.session_state["logged_in_patient_id"] is not None:
+        match st.session_state["patient_view"]:
+            case "dashboard":
+                render_patient_dashboard()
+            case "book":
+                render_booking_view()
+            case "cancel":
+                render_cancel_view()
+            case _:
+                render_patient_dashboard()
+    else:
+        # Not logged in - show public views
+        match st.session_state["patient_view"]:
+            case "home":
+                render_home_view()
+            case "register":
+                render_registration_form()
+            case "login":
+                render_login_view()
+            case _:
+                render_home_view()
 
 
 if __name__ == "__main__":
