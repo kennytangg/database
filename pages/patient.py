@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime
 from db_utils import run_query
+from collections import defaultdict
 
 
 def initialize_session_state():
@@ -199,12 +200,16 @@ def render_patient_dashboard():
 
     st.divider()
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("Book an Appointment", use_container_width=True):
             st.session_state["patient_view"] = "book"
             st.rerun()
     with col2:
+        if st.button("View My Appointments", use_container_width=True):
+            st.session_state["patient_view"] = "view"
+            st.rerun()
+    with col3:
         if st.button("Cancel an Appointment", use_container_width=True):
             st.session_state["patient_view"] = "cancel"
             st.rerun()
@@ -250,6 +255,116 @@ def render_appointment_booking():
 
     if st.button("Confirm Appointment", use_container_width=True):
         handle_appointment_confirmation(selected_slot, reason)
+
+
+def render_view_appointments():
+    """View all appointments for logged in patient"""
+    back_to_dashboard_button()
+
+    patient_id = st.session_state["logged_in_patient_id"]
+    patient_name = st.session_state["logged_in_patient_name"]
+
+    st.subheader("My Appointments")
+    st.write(f"All appointments for **{patient_name}**")
+
+    # Query all appointments with details
+    appointments = run_query(
+        """
+        SELECT 
+            a.appointment_id,
+            a.appointment_datetime,
+            a.status,
+            a.reason_for_visit,
+            s.available_day,
+            s.start_time,
+            s.end_time,
+            d.first_name AS doctor_first_name,
+            d.last_name AS doctor_last_name,
+            sp.specialization_name
+        FROM Appointment a
+        JOIN Schedule s ON a.schedule_id = s.schedule_id
+        JOIN Doctor d ON s.doctor_id = d.doctor_id
+        JOIN Specialization sp ON d.specialization_id = sp.specialization_id
+        WHERE a.patient_id = %s
+        ORDER BY a.appointment_datetime DESC
+        """,
+        (patient_id,),
+        fetch=True,
+    )
+
+    if not appointments:
+        st.info("You don't have any appointments yet.")
+        if st.button(" Book Your First Appointment", use_container_width=True):
+            st.session_state["patient_view"] = "book"
+            st.rerun()
+        return
+
+    # Display appointments grouped by status
+    display_appointments_by_status(appointments)
+
+
+def display_appointments_by_status(appointments):
+    """Display appointments organized by status with color coding"""
+
+    # Status color mapping
+    status_colors = {
+        "scheduled": "🟢",
+        "completed": "🔵",
+        "cancelled": "🔴",
+        "missed": "🟠",
+    }
+
+    grouped = defaultdict(list)
+    for appt in appointments:
+        grouped[appt["status"]].append(appt)
+
+    # Show scheduled first, then others
+    status_order = ["scheduled", "completed", "cancelled", "missed"]
+
+    for status in status_order:
+        if status not in grouped:
+            continue
+
+        appts = grouped[status]
+        status_icon = status_colors.get(status, "⚪")
+
+        with st.expander(
+            f"{status_icon} {status.title()} ({len(appts)})",
+            expanded=(status == "scheduled"),
+        ):
+            for appt in appts:
+                render_appointment_card(appt)
+
+
+def render_appointment_card(appt):
+    """Render a single appointment card"""
+    with st.container():
+        col1, col2 = st.columns([3, 1])
+
+        with col1:
+            st.markdown(
+                f"### {appt['available_day']} at {appt['start_time']}–{appt['end_time']}"
+            )
+            st.write(
+                f"**Doctor:** Dr. {appt['doctor_first_name']} {appt['doctor_last_name']}"
+            )
+            st.write(f"**Specialization:** {appt['specialization_name']}")
+            st.write(f"**Reason:** {appt['reason_for_visit'] or 'Not specified'}")
+            st.caption(f"Appointment Date: {appt['appointment_datetime']}")
+
+        with col2:
+            # Status badge
+            status = appt["status"]
+            if status == "scheduled":
+                st.success("Scheduled")
+            elif status == "completed":
+                st.info("Completed")
+            elif status == "cancelled":
+                st.error("Cancelled")
+            elif status == "missed":
+                st.warning("Missed")
+
+        st.divider()
 
 
 def get_doctors_by_specialization(spec_id):
@@ -445,7 +560,11 @@ def main():
                 render_patient_dashboard()
             case "book":
                 render_booking_view()
+            case "view":
+                render_view_appointments()
             case "cancel":
+                render_cancel_view()
+            case "update":
                 render_cancel_view()
             case _:
                 render_patient_dashboard()
