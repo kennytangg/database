@@ -65,7 +65,7 @@ def render_registration_form():
         with col1:
             fname = st.text_input("First Name *", placeholder="Enter your first name")
             dob = st.date_input(
-                "Date of Birth*",
+                "Date of Birth *",
                 min_value=datetime(1900, 1, 1),
                 max_value=datetime(2025, 12, 31),
                 value=datetime(2000, 1, 1),
@@ -77,9 +77,7 @@ def render_registration_form():
 
         with col2:
             lname = st.text_input("Last Name *", placeholder="Enter your last name")
-            gender = st.selectbox(
-                "Gender", ["Select gender", "Male", "Female", "Unknown"]
-            )
+            gender = st.selectbox("Gender *", ["Select gender", "Male", "Female"])
             email = st.text_input("Email", placeholder="example@email.com")
 
         submitted = st.form_submit_button(
@@ -92,13 +90,13 @@ def render_registration_form():
 
 def handle_registration_submission(fname, lname, dob, phone, gender, email, address):
     """Handle patient registration form submission"""
-    if not fname or not lname or not dob or not phone:
+    # Validate all required fields including gender
+    if not fname or not lname or not dob or not phone or gender == "Select gender":
         st.error(
-            "Please fill in all required fields: First Name, Last Name, Date of Birth and Phone Number."
+            "Please fill in all required fields: First Name, Last Name, Date of Birth, Gender, and Phone Number."
         )
         return
 
-    gender_value = None if gender in ["Select gender", "Unknown"] else gender
     email_value = email if email else None
     address_value = address if address else None
 
@@ -106,7 +104,7 @@ def handle_registration_submission(fname, lname, dob, phone, gender, email, addr
         INSERT INTO Patient (first_name, last_name, dob, gender, phone_number, email, address)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
     """
-    params = (fname, lname, dob, gender_value, phone, email_value, address_value)
+    params = (fname, lname, dob, gender, phone, email_value, address_value)
 
     try:
         run_query(query, params)
@@ -200,18 +198,20 @@ def render_patient_dashboard():
 
     st.divider()
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         if st.button("Book an Appointment", use_container_width=True):
             st.session_state["patient_view"] = "book"
+            st.rerun()
+        if st.button("Cancel an Appointment", use_container_width=True):
+            st.session_state["patient_view"] = "cancel"
             st.rerun()
     with col2:
         if st.button("View My Appointments", use_container_width=True):
             st.session_state["patient_view"] = "view"
             st.rerun()
-    with col3:
-        if st.button("Cancel an Appointment", use_container_width=True):
-            st.session_state["patient_view"] = "cancel"
+        if st.button("Update My Profile", use_container_width=True):
+            st.session_state["patient_view"] = "update_profile"
             st.rerun()
 
 
@@ -294,7 +294,7 @@ def render_view_appointments():
 
     if not appointments:
         st.info("You don't have any appointments yet.")
-        if st.button(" Book Your First Appointment", use_container_width=True):
+        if st.button("Book Your First Appointment", use_container_width=True):
             st.session_state["patient_view"] = "book"
             st.rerun()
         return
@@ -365,6 +365,119 @@ def render_appointment_card(appt):
                 st.warning("Missed")
 
         st.divider()
+
+
+def render_update_profile():
+    """Render patient profile update form"""
+    back_to_dashboard_button()
+
+    patient_id = st.session_state["logged_in_patient_id"]
+
+    st.subheader("Update My Profile")
+    st.write("Update your personal information below.")
+
+    # Fetch current patient data
+    patient_data = get_patient_data(patient_id)
+
+    if not patient_data:
+        st.error("Could not load patient data.")
+        return
+
+    # Display update form with current data pre-filled
+    display_update_form(patient_data)
+
+
+def get_patient_data(patient_id):
+    """Fetch current patient information"""
+    result = run_query(
+        """
+        SELECT patient_id, first_name, last_name, dob, gender, 
+               phone_number, email, address
+        FROM Patient
+        WHERE patient_id = %s
+        """,
+        (patient_id,),
+        fetch=True,
+    )
+    return result[0] if result else None
+
+
+def display_update_form(patient_data):
+    """Display form with current patient data for editing"""
+
+    st.info(
+        "**Note:** First name, last name, date of birth, and gender cannot be changed."
+    )
+
+    with st.form("update_profile_form"):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Read-only fields
+            st.text_input("First Name", value=patient_data["first_name"], disabled=True)
+            st.text_input("Last Name", value=patient_data["last_name"], disabled=True)
+            st.date_input("Date of Birth", value=patient_data["dob"], disabled=True)
+
+        with col2:
+            # Gender - locked after registration
+            gender_display = (
+                patient_data["gender"] if patient_data["gender"] else "Not set"
+            )
+            st.text_input("Gender", value=gender_display, disabled=True)
+
+            # Editable fields
+            phone = st.text_input(
+                "Phone Number *",
+                value=patient_data["phone_number"],
+                placeholder="e.g., 081234567890",
+            )
+            email = st.text_input(
+                "Email",
+                value=patient_data["email"] or "",
+                placeholder="example@email.com",
+            )
+
+        address = st.text_area(
+            "Address",
+            value=patient_data["address"] or "",
+            height=100,
+            placeholder="Your full address",
+        )
+
+        submitted = st.form_submit_button("Save Changes", use_container_width=True)
+
+    if submitted:
+        handle_profile_update(patient_data["patient_id"], phone, email, address)
+
+
+def handle_profile_update(patient_id, phone, email, address):
+    """Handle patient profile update submission (gender is excluded)"""
+
+    # Validate required fields
+    if not phone:
+        st.error("Phone number is required.")
+        return
+
+    # Process values
+    email_value = email if email else None
+    address_value = address if address else None
+
+    # Update query
+    query = """
+        UPDATE Patient
+        SET phone_number = %s,
+            email = %s,
+            address = %s
+        WHERE patient_id = %s
+    """
+    params = (phone, email_value, address_value, patient_id)
+
+    try:
+        run_query(query, params)
+        st.success("✅ Profile updated successfully!")
+        st.balloons()
+    except Exception as e:
+        st.error(f"Failed to update profile: {e}")
 
 
 def get_doctors_by_specialization(spec_id):
@@ -440,7 +553,7 @@ def handle_appointment_confirmation(selected_slot, reason):
             (selected_slot["schedule_id"],),
         )
 
-        st.success("Appointment Successfully Booked!")
+        st.success("✅ Appointment Successfully Booked!")
         st.balloons()
 
         display_appointment_summary(selected_slot, reason)
@@ -471,9 +584,8 @@ def render_cancel_view():
 def render_patient_appointments_for_cancel():
     """Show logged-in patient's upcoming/scheduled appointments and allow cancel."""
     patient_id = st.session_state["logged_in_patient_id"]
-    patient_name = st.session_state["logged_in_patient_name"]
 
-    st.markdown(f"### Your Scheduled Appointments")
+    st.markdown("### Your Scheduled Appointments")
 
     appointments = run_query(
         """
@@ -543,7 +655,7 @@ def handle_cancel_appointment(appt_row):
             (schedule_id,),
         )
 
-        st.success("Appointment successfully cancelled. The slot is now available.")
+        st.success("✅ Appointment successfully cancelled. The slot is now available.")
         st.rerun()
     except Exception as e:
         st.error(f"Failed to cancel appointment: {e}")
@@ -564,8 +676,8 @@ def main():
                 render_view_appointments()
             case "cancel":
                 render_cancel_view()
-            case "update":
-                render_cancel_view()
+            case "update_profile":
+                render_update_profile()
             case _:
                 render_patient_dashboard()
     else:
