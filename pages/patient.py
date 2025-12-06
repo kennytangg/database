@@ -60,7 +60,12 @@ def render_registration_form():
         col1, col2 = st.columns(2)
         with col1:
             fname = st.text_input("First Name *")
-            dob = st.date_input("Date of Birth *", datetime(2000, 1, 1))
+            dob = st.date_input(
+                "Date of Birth *",
+                value=datetime(2000, 1, 1),
+                min_value=datetime(1900, 1, 1),
+                max_value=datetime(2025, 12, 31),
+            )
             phone = st.text_input("Phone Number *")
             address = st.text_area("Address")
         with col2:
@@ -97,7 +102,12 @@ def render_login_view():
         st.rerun()
 
     st.subheader("Patient Login")
-    dob = st.date_input("Date of Birth", datetime(2000, 1, 1))
+    dob = st.date_input(
+        "Date of Birth",
+        value=datetime(2000, 1, 1),
+        min_value=datetime(1900, 1, 1),
+        max_value=datetime(2025, 12, 31),
+    )
 
     if st.button("Search", use_container_width=True):
         patients = run_query(
