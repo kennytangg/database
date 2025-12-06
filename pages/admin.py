@@ -21,21 +21,21 @@ def render_home_view():
 
     # Navigation cards
     col1, col2 = st.columns(2)
-    
+
     with col1:
         if st.button("Dashboard & Analytics", use_container_width=True, type="primary"):
             st.session_state["admin_view"] = "dashboard"
             st.rerun()
-        
+
         if st.button("View All Schedules", use_container_width=True):
             st.session_state["admin_view"] = "schedules"
             st.rerun()
-    
+
     with col2:
         if st.button("View All Appointments", use_container_width=True):
             st.session_state["admin_view"] = "appointments"
             st.rerun()
-        
+
         if st.button("Manage Invoices", use_container_width=True):
             st.session_state["admin_view"] = "invoices"
             st.rerun()
@@ -65,10 +65,7 @@ def render_dashboard():
         cols = st.columns(len(appointment_summary))
         for idx, stat in enumerate(appointment_summary):
             with cols[idx]:
-                st.metric(
-                    stat["status"].capitalize(), 
-                    stat["count"]
-                )
+                st.metric(stat["status"].capitalize(), stat["count"])
     else:
         st.info("No appointment data available")
 
@@ -76,7 +73,7 @@ def render_dashboard():
 
     # Revenue Summary
     st.subheader("Revenue Summary")
-    
+
     revenue_data = run_query(
         """
         SELECT 
@@ -104,7 +101,7 @@ def render_dashboard():
 
     # Recent Activity
     st.subheader("Recent Completed Appointments")
-    
+
     recent_appointments = run_query(
         """
         SELECT 
@@ -134,7 +131,9 @@ def render_dashboard():
                 f"{appt['patient_first']} {appt['patient_last']} → "
                 f"Dr. {appt['doctor_first']} {appt['doctor_last']}"
             ):
-                st.write(f"**Reason:** {appt['reason_for_visit'] or 'General consultation'}")
+                st.write(
+                    f"**Reason:** {appt['reason_for_visit'] or 'General consultation'}"
+                )
                 st.write(f"**Diagnosis:** {appt['diagnosis'] or 'N/A'}")
     else:
         st.info("No recent completed appointments")
@@ -172,20 +171,20 @@ def render_schedules():
         current_doctor = None
         for schedule in schedules:
             doctor_name = f"Dr. {schedule['doctor_first']} {schedule['doctor_last']}"
-            
+
             if current_doctor != doctor_name:
                 if current_doctor is not None:
                     st.divider()
                 st.subheader(f"{doctor_name} - {schedule['specialization_name']}")
                 current_doctor = doctor_name
-            
+
             col1, col2, col3 = st.columns([2, 2, 1])
             with col1:
                 st.write(f"**{schedule['available_day']}**")
             with col2:
                 st.write(f"{schedule['start_time']} - {schedule['end_time']}")
             with col3:
-                if schedule['is_booked']:
+                if schedule["is_booked"]:
                     st.markdown(":red[**Booked**]")
                 else:
                     st.markdown(":green[**Free**]")
@@ -200,13 +199,12 @@ def render_appointments():
         st.rerun()
 
     st.header("All Appointments")
-    
+
     # Status filter
     status_filter = st.selectbox(
-        "Filter by Status",
-        ["All", "scheduled", "completed", "cancelled"]
+        "Filter by Status", ["All", "scheduled", "completed", "cancelled"]
     )
-    
+
     st.divider()
 
     # Build query based on filter
@@ -245,16 +243,16 @@ def render_appointments():
     if appointments:
         st.write(f"**Total: {len(appointments)} appointment(s)**")
         st.divider()
-        
+
         for appt in appointments:
             # Status badge color
-            if appt['status'] == 'completed':
+            if appt["status"] == "completed":
                 status_badge = ":green[COMPLETED]"
-            elif appt['status'] == 'scheduled':
+            elif appt["status"] == "scheduled":
                 status_badge = ":orange[SCHEDULED]"
             else:  # cancelled
                 status_badge = ":red[CANCELLED]"
-            
+
             with st.expander(
                 f"{appt['appointment_datetime'].strftime('%Y-%m-%d %H:%M')} - "
                 f"{appt['patient_first']} {appt['patient_last']} → "
@@ -263,14 +261,20 @@ def render_appointments():
                 col1, col2 = st.columns(2)
                 with col1:
                     st.write(f"**Appointment ID:** {appt['appointment_id']}")
-                    st.write(f"**Patient:** {appt['patient_first']} {appt['patient_last']}")
+                    st.write(
+                        f"**Patient:** {appt['patient_first']} {appt['patient_last']}"
+                    )
                     st.write(f"**Phone:** {appt['phone_number']}")
                 with col2:
-                    st.write(f"**Doctor:** Dr. {appt['doctor_first']} {appt['doctor_last']}")
+                    st.write(
+                        f"**Doctor:** Dr. {appt['doctor_first']} {appt['doctor_last']}"
+                    )
                     st.write(f"**Specialization:** {appt['specialization_name']}")
                     st.markdown(f"**Status:** {status_badge}")
-                
-                st.write(f"**Reason:** {appt['reason_for_visit'] or 'General consultation'}")
+
+                st.write(
+                    f"**Reason:** {appt['reason_for_visit'] or 'General consultation'}"
+                )
     else:
         st.info("No appointments found")
 
@@ -282,14 +286,16 @@ def render_invoices():
         st.rerun()
 
     st.header("Invoice Management")
-    
+
     # Tabs for different invoice operations
-    tab1, tab2, tab3 = st.tabs(["View All Invoices", "Create Invoice", "Update Payment"])
+    tab1, tab2, tab3 = st.tabs(
+        ["View All Invoices", "Create Invoice", "Update Payment"]
+    )
 
     # Tab 1: View All Invoices
     with tab1:
         st.subheader("All Invoices")
-        
+
         invoices = run_query(
             """
             SELECT 
@@ -312,10 +318,12 @@ def render_invoices():
         if invoices:
             st.write(f"**Total: {len(invoices)} invoice(s)**")
             st.divider()
-            
+
             for inv in invoices:
-                status_badge = ":green[PAID]" if inv['status'] == 'paid' else ":orange[UNPAID]"
-                
+                status_badge = (
+                    ":green[PAID]" if inv["status"] == "paid" else ":orange[UNPAID]"
+                )
+
                 with st.expander(
                     f"Invoice #{inv['appointment_id']} - "
                     f"{inv['patient_first']} {inv['patient_last']} - "
@@ -323,8 +331,12 @@ def render_invoices():
                 ):
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.write(f"**Patient:** {inv['patient_first']} {inv['patient_last']}")
-                        st.write(f"**Appointment Date:** {inv['appointment_datetime'].strftime('%Y-%m-%d')}")
+                        st.write(
+                            f"**Patient:** {inv['patient_first']} {inv['patient_last']}"
+                        )
+                        st.write(
+                            f"**Appointment Date:** {inv['appointment_datetime'].strftime('%Y-%m-%d')}"
+                        )
                         st.write(f"**Reason:** {inv['reason_for_visit'] or 'General'}")
                     with col2:
                         st.write(f"**Amount:** Rp {inv['amount']:,.0f}")
@@ -337,7 +349,7 @@ def render_invoices():
     with tab2:
         st.subheader("Create New Invoice")
         st.write("Create invoices for completed appointments without invoices")
-        
+
         # Get completed appointments without invoices
         eligible_appointments = run_query(
             """
@@ -363,31 +375,34 @@ def render_invoices():
         if eligible_appointments:
             st.write(f"**{len(eligible_appointments)} appointment(s) need invoices**")
             st.divider()
-            
+
             with st.form("create_invoice_form"):
                 # Select appointment
                 appointment_options = {
                     f"#{appt['appointment_id']} - {appt['patient_first']} {appt['patient_last']} → "
                     f"Dr. {appt['doctor_first']} {appt['doctor_last']} "
-                    f"({appt['appointment_datetime'].strftime('%Y-%m-%d')})": appt['appointment_id']
+                    f"({appt['appointment_datetime'].strftime('%Y-%m-%d')})": appt[
+                        "appointment_id"
+                    ]
                     for appt in eligible_appointments
                 }
-                
+
                 selected_appt = st.selectbox(
-                    "Select Appointment",
-                    options=list(appointment_options.keys())
+                    "Select Appointment", options=list(appointment_options.keys())
                 )
-                
+
                 amount = st.number_input(
                     "Invoice Amount (Rp)",
                     min_value=0.0,
                     step=10000.0,
                     value=150000.0,
-                    format="%.2f"
+                    format="%.2f",
                 )
-                
-                submitted = st.form_submit_button("Create Invoice", use_container_width=True, type="primary")
-            
+
+                submitted = st.form_submit_button(
+                    "Create Invoice", use_container_width=True, type="primary"
+                )
+
             if submitted:
                 try:
                     appointment_id = appointment_options[selected_appt]
@@ -396,9 +411,11 @@ def render_invoices():
                         INSERT INTO Invoice (appointment_id, amount, issue_date, status)
                         VALUES (%s, %s, CURDATE(), 'unpaid')
                         """,
-                        (appointment_id, amount)
+                        (appointment_id, amount),
                     )
-                    st.success(f"Invoice created successfully for Appointment #{appointment_id}!")
+                    st.success(
+                        f"Invoice created successfully for Appointment #{appointment_id}!"
+                    )
                     st.rerun()
                 except Exception as e:
                     st.error(f"Failed to create invoice: {e}")
@@ -409,7 +426,7 @@ def render_invoices():
     with tab3:
         st.subheader("Update Payment Status")
         st.write("Mark invoices as paid")
-        
+
         # Get unpaid invoices
         unpaid_invoices = run_query(
             """
@@ -432,21 +449,31 @@ def render_invoices():
         if unpaid_invoices:
             st.write(f"**{len(unpaid_invoices)} unpaid invoice(s)**")
             st.divider()
-            
+
             for inv in unpaid_invoices:
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     st.write(f"**Invoice #{inv['appointment_id']}**")
-                    st.write(f"{inv['patient_first']} {inv['patient_last']} - Rp {inv['amount']:,.0f}")
-                    st.caption(f"Issued: {inv['issue_date']} | Appointment: {inv['appointment_datetime'].strftime('%Y-%m-%d')}")
+                    st.write(
+                        f"{inv['patient_first']} {inv['patient_last']} - Rp {inv['amount']:,.0f}"
+                    )
+                    st.caption(
+                        f"Issued: {inv['issue_date']} | Appointment: {inv['appointment_datetime'].strftime('%Y-%m-%d')}"
+                    )
                 with col2:
-                    if st.button("Mark Paid", key=f"pay_{inv['appointment_id']}", use_container_width=True):
+                    if st.button(
+                        "Mark Paid",
+                        key=f"pay_{inv['appointment_id']}",
+                        use_container_width=True,
+                    ):
                         try:
                             run_query(
                                 "UPDATE Invoice SET status = 'paid' WHERE appointment_id = %s",
-                                (inv['appointment_id'],)
+                                (inv["appointment_id"],),
                             )
-                            st.success(f"Invoice #{inv['appointment_id']} marked as paid!")
+                            st.success(
+                                f"Invoice #{inv['appointment_id']} marked as paid!"
+                            )
                             st.rerun()
                         except Exception as e:
                             st.error(f"Failed to update: {e}")

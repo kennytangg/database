@@ -74,7 +74,7 @@ def render_dashboard():
 
     # Get today scheduled appointments
     appointments = run_query(
-    """
+        """
         SELECT 
             a.appointment_id,
             a.reason_for_visit,
