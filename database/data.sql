@@ -28,7 +28,7 @@ INSERT INTO Schedule (schedule_id, doctor_id, available_day, start_time, end_tim
     (304, 201, 'Monday', '10:30', '11:00', FALSE),
     (305, 201, 'Thursday', '13:00', '13:30', FALSE),
     (306, 202, 'Tuesday', '10:00', '10:30', TRUE),
-    (307, 202, 'Tuesday', '10:30', '11:00', FALSE),
+    (307, 202, 'Tuesday', '10:30', '11:00', TRUE),
     (308, 202, 'Tuesday', '11:00', '11:30', FALSE),
     (309, 203, 'Wednesday', '14:00', '14:30', TRUE),
     (310, 203, 'Wednesday', '14:30', '15:00', FALSE),
@@ -40,7 +40,7 @@ INSERT INTO Appointment (appointment_id, patient_id, schedule_id, reason_for_vis
     (401, 101, 301, 'Annual checkup', '2025-11-24 09:00', 'completed'),
     (402, 104, 302, 'General consultation', '2025-11-24 09:30', 'scheduled'),
     (403, 102, 306, 'Skin rash evaluation', '2025-11-25 10:00', 'completed'),
-    (404, 106, 307, 'Follow-up', '2025-11-25 10:30', 'missed'),
+    (404, 106, 307, 'Follow-up', '2025-11-25 10:30', 'completed'),
     (405, 105, 309, 'Acne treatment', '2025-11-26 14:00', 'completed'),
     (406, 103, 311, 'Dental cleaning', '2025-11-27 08:30', 'completed');
 
@@ -48,6 +48,7 @@ INSERT INTO Appointment (appointment_id, patient_id, schedule_id, reason_for_vis
 INSERT INTO Record (appointment_id, diagnosis, prescription, notes) VALUES
     (401, 'Healthy', 'Multivitamin', 'Routine annual exam, no issues.'),
     (403, 'Dermatitis', 'Hydrocortisone cream', 'Rash evaluated, mild eczema.'),
+    (404, 'General health', 'Continue medication', 'Follow-up completed successfully.'),
     (405, 'Acne', 'Benzoyl peroxide', 'Prescribed topical for moderate acne.'),
     (406, 'Plaque buildup', 'Routine cleaning', 'Dental cleaning successful.');
 
@@ -55,5 +56,6 @@ INSERT INTO Record (appointment_id, diagnosis, prescription, notes) VALUES
 INSERT INTO Invoice (appointment_id, amount, issue_date, status) VALUES
     (401, 150000.00, '2025-11-24', 'paid'),
     (403, 180000.00, '2025-11-25', 'unpaid'),
+    (404, 120000.00, '2025-11-25', 'unpaid'),
     (405, 190000.00, '2025-11-26', 'unpaid'),
     (406, 200000.00, '2025-11-27', 'unpaid');
