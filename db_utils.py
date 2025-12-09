@@ -22,17 +22,7 @@ def get_connection():
 
 
 def run_query(query, params=None, fetch=False):
-    """
-    Execute a SQL query with optional parameters.
-
-    Args:
-        query (str): SQL query to execute
-        params (tuple): Parameters for parameterized queries (optional)
-        fetch (bool): If True, returns results (for SELECT). If False, commits changes (for INSERT/UPDATE/DELETE)
-
-    Returns:
-        list of dicts if fetch=True, None otherwise
-    """
+    """Execute an SQL query. If fetch is True, return all rows as a list of dicts. if not commit the query and return None."""
     conn = get_connection()
     if conn is None:
         return None
