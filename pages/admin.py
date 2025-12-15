@@ -31,6 +31,10 @@ def render_home_view():
             st.session_state["admin_view"] = "schedules"
             st.rerun()
 
+        if st.button("View Database Tables", use_container_width=True):
+            st.session_state["admin_view"] = "database"
+            st.rerun()
+
     with col2:
         if st.button("View All Appointments", use_container_width=True):
             st.session_state["admin_view"] = "appointments"
@@ -280,7 +284,7 @@ def render_appointments():
 
 
 def render_invoices():
-    """Manage invoices - view, create, update payment status"""
+    """Manage invoices: view, create, update payment status"""
     if st.button("← Back to Home"):
         st.session_state["admin_view"] = "home"
         st.rerun()
@@ -481,6 +485,41 @@ def render_invoices():
         else:
             st.success("All invoices are paid!")
 
+def render_database():
+    """View database tables"""
+    if st.button("← Back to Home"):
+        st.session_state["admin_view"] = "home"
+        st.rerun()
+
+    st.header("Database Tables")
+    st.write("View all data in each table")
+    st.divider()
+
+    # List of tables to display
+    tables = [
+        "Specialization",
+        "Patient", 
+        "Doctor",
+        "Schedule",
+        "Appointment",
+        "Record",
+        "Invoice"
+    ]
+
+    # Table selector
+    selected_table = st.selectbox("Select Table", tables)
+    
+    st.subheader(f"Table: {selected_table}")
+    
+    # Query and display the selected table
+    data = run_query(f"SELECT * FROM {selected_table}", fetch=True)
+    
+    if data:
+        st.write(f"**Total rows: {len(data)}**")
+        st.dataframe(data, use_container_width=True)
+    else:
+        st.info(f"No data in {selected_table}")
+
 
 def main():
     init_state()
@@ -494,6 +533,8 @@ def main():
             render_appointments()
         case "invoices":
             render_invoices()
+        case "database":
+            render_database()
         case _:
             render_home_view()
 
