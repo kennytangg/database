@@ -1,9 +1,8 @@
 -- specializations
-INSERT INTO Specialization (specialization_id, specialization_name) VALUES
-    (1, 'General Practitioner'),
-    (2, 'Dermatology'),
-    (3, 'Dentist');
-
+INSERT INTO Specialization (specialization_id, specialization_name, consultation_fee) VALUES
+    (1, 'General Practitioner', 150000.00),
+    (2, 'Dermatology',         200000.00),
+    (3, 'Dentist',             190000.00);
 
 -- patients
 INSERT INTO Patient (patient_id, first_name, last_name, dob, gender, phone_number, email, address) VALUES
@@ -60,5 +59,5 @@ INSERT INTO Record (appointment_id, diagnosis, prescription, notes) VALUES
 -- Invoices (only for completed appointments)
 INSERT INTO Invoice (appointment_id, amount, issue_date, status) VALUES
     (401, 150000.00, '2025-12-15', 'paid'),
-    (407, 200000.00, '2025-11-18', 'paid'),
-    (408, 120000.00, '2025-11-25', 'unpaid');
+    (407, 150000.00, '2025-11-18', 'paid'),
+    (408, 150000.00, '2025-11-25', 'unpaid'); 

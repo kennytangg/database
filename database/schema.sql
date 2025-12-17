@@ -4,7 +4,8 @@ USE clinicDB;
 
 CREATE TABLE Specialization (
     specialization_id INT PRIMARY KEY,
-    specialization_name VARCHAR(100) NOT NULL
+    specialization_name VARCHAR(100) NOT NULL,
+    consultation_fee DECIMAL(10, 2) NOT NULL
 );
 
 CREATE TABLE Patient (
@@ -17,7 +18,6 @@ CREATE TABLE Patient (
     email VARCHAR(100),
     address VARCHAR(255)
 );
-
 
 CREATE TABLE Doctor (
     doctor_id INT PRIMARY KEY AUTO_INCREMENT,

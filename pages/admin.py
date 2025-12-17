@@ -354,22 +354,25 @@ def render_invoices():
         st.subheader("Create New Invoice")
         st.write("Create invoices for completed appointments without invoices")
 
-        # Get completed appointments without invoices
+        # Get completed appointments without invoices + specialization fee
         eligible_appointments = run_query(
             """
             SELECT 
                 a.appointment_id,
                 a.appointment_datetime,
                 a.reason_for_visit,
-                p.first_name as patient_first,
-                p.last_name as patient_last,
-                d.first_name as doctor_first,
-                d.last_name as doctor_last
+                p.first_name  AS patient_first,
+                p.last_name   AS patient_last,
+                d.first_name  AS doctor_first,
+                d.last_name   AS doctor_last,
+                s.specialization_name,
+                s.consultation_fee
             FROM Appointment a
-            JOIN Patient p ON a.patient_id = p.patient_id
-            JOIN Schedule sch ON a.schedule_id = sch.schedule_id
-            JOIN Doctor d ON sch.doctor_id = d.doctor_id
-            LEFT JOIN Invoice i ON a.appointment_id = i.appointment_id
+            JOIN Patient p        ON a.patient_id = p.patient_id
+            JOIN Schedule sch     ON a.schedule_id = sch.schedule_id
+            JOIN Doctor d         ON sch.doctor_id = d.doctor_id
+            JOIN Specialization s ON d.specialization_id = s.specialization_id
+            LEFT JOIN Invoice i   ON a.appointment_id = i.appointment_id
             WHERE a.status = 'completed' AND i.appointment_id IS NULL
             ORDER BY a.appointment_datetime DESC
             """,
@@ -381,26 +384,28 @@ def render_invoices():
             st.divider()
 
             with st.form("create_invoice_form"):
-                # Select appointment
+                # Build option label → full row mapping
                 appointment_options = {
-                    f"#{appt['appointment_id']} - {appt['patient_first']} {appt['patient_last']} → "
-                    f"Dr. {appt['doctor_first']} {appt['doctor_last']} "
-                    f"({appt['appointment_datetime'].strftime('%Y-%m-%d')})": appt[
-                        "appointment_id"
-                    ]
+                    (
+                        f"#{appt['appointment_id']} - "
+                        f"{appt['patient_first']} {appt['patient_last']} → "
+                        f"Dr. {appt['doctor_first']} {appt['doctor_last']} "
+                        f"({appt['appointment_datetime'].strftime('%Y-%m-%d')}) - "
+                        f"{appt['specialization_name']} "
+                        f"(Rp {appt['consultation_fee']:,.0f})"
+                    ): appt
                     for appt in eligible_appointments
                 }
 
-                selected_appt = st.selectbox(
+                selected_label = st.selectbox(
                     "Select Appointment", options=list(appointment_options.keys())
                 )
+                selected_appt = appointment_options[selected_label]
 
-                amount = st.number_input(
-                    "Invoice Amount (Rp)",
-                    min_value=0.0,
-                    step=10000.0,
-                    value=150000.0,
-                    format="%.2f",
+                # Read-only fee information
+                st.info(
+                    f"Consultation fee (from specialization): "
+                    f"Rp {selected_appt['consultation_fee']:,.0f}"
                 )
 
                 submitted = st.form_submit_button(
@@ -409,7 +414,9 @@ def render_invoices():
 
             if submitted:
                 try:
-                    appointment_id = appointment_options[selected_appt]
+                    appointment_id = selected_appt["appointment_id"]
+                    amount = selected_appt["consultation_fee"]
+
                     run_query(
                         """
                         INSERT INTO Invoice (appointment_id, amount, issue_date, status)
@@ -459,10 +466,12 @@ def render_invoices():
                 with col1:
                     st.write(f"**Invoice #{inv['appointment_id']}**")
                     st.write(
-                        f"{inv['patient_first']} {inv['patient_last']} - Rp {inv['amount']:,.0f}"
+                        f"{inv['patient_first']} {inv['patient_last']} - "
+                        f"Rp {inv['amount']:,.0f}"
                     )
                     st.caption(
-                        f"Issued: {inv['issue_date']} | Appointment: {inv['appointment_datetime'].strftime('%Y-%m-%d')}"
+                        f"Issued: {inv['issue_date']} | "
+                        f"Appointment: {inv['appointment_datetime'].strftime('%Y-%m-%d')}"
                     )
                 with col2:
                     if st.button(
@@ -485,6 +494,7 @@ def render_invoices():
         else:
             st.success("All invoices are paid!")
 
+
 def render_database():
     """View database tables"""
     if st.button("← Back to Home"):
@@ -498,22 +508,22 @@ def render_database():
     # List of tables to display
     tables = [
         "Specialization",
-        "Patient", 
+        "Patient",
         "Doctor",
         "Schedule",
         "Appointment",
         "Record",
-        "Invoice"
+        "Invoice",
     ]
 
     # Table selector
     selected_table = st.selectbox("Select Table", tables)
-    
+
     st.subheader(f"Table: {selected_table}")
-    
+
     # Query and display the selected table
     data = run_query(f"SELECT * FROM {selected_table}", fetch=True)
-    
+
     if data:
         st.write(f"**Total rows: {len(data)}**")
         st.dataframe(data, use_container_width=True)
