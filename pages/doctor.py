@@ -1,6 +1,7 @@
 import streamlit as st
 from db_utils import run_query
-from datetime import date
+from datetime import date, timedelta
+
 
 
 def init_state():
@@ -62,7 +63,7 @@ def render_home_view():
 
 
 def render_dashboard():
-    """Doctor dashboard - Today appointments list"""
+    """Doctor dashboard - Upcoming appointments list"""
     st.header(f"Welcome, {st.session_state['logged_in_doctor_name']}!")
 
     if st.button("Logout", type="primary"):
@@ -70,9 +71,9 @@ def render_dashboard():
         st.rerun()
 
     st.divider()
-    st.subheader("Today's Appointments")
+    st.subheader("Upcoming Appointments")
 
-    # Get today scheduled appointments
+    # Get all upcoming scheduled appointments
     appointments = run_query(
         """
         SELECT 
@@ -91,24 +92,33 @@ def render_dashboard():
         JOIN Patient p ON a.patient_id = p.patient_id
         WHERE sch.doctor_id = %s 
           AND a.status = 'scheduled'
-          AND DATE(a.appointment_datetime) = CURDATE()
-        ORDER BY a.appointment_datetime
     """,
         (st.session_state["logged_in_doctor_id"],),
         fetch=True,
     )
 
     if not appointments:
-        st.info("No scheduled appointments for today")
+        st.info("No upcoming appointments")
         return
 
-    st.write(f"**{len(appointments)} patient(s) scheduled**")
+    st.write(f"**{len(appointments)} upcoming appointment(s)**")
     st.divider()
 
     for appt in appointments:
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.write(f"**{appt['start_time']} - {appt['end_time']}**")
+            # Show date if not today
+            appt_date = appt['appointment_datetime'].date()
+            today = date.today()
+            
+            if appt_date == today:
+                date_label = "Today"
+            elif appt_date == today + timedelta(days=1):
+                date_label = "Tomorrow"
+            else:
+                date_label = appt_date.strftime('%a, %b %d')
+            
+            st.write(f"**{date_label} • {appt['start_time']} - {appt['end_time']}**")
             st.write(f"{appt['patient_first_name']} {appt['patient_last_name']}")
             st.caption(f"Reason: {appt['reason_for_visit'] or 'General consultation'}")
         with col2:
@@ -120,6 +130,7 @@ def render_dashboard():
                 st.session_state["doctor_view"] = "patient_context"
                 st.rerun()
         st.divider()
+\
 
 
 def render_patient_context():

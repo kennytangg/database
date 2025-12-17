@@ -4,6 +4,7 @@ INSERT INTO Specialization (specialization_id, specialization_name) VALUES
     (2, 'Dermatology'),
     (3, 'Dentist');
 
+
 -- patients
 INSERT INTO Patient (patient_id, first_name, last_name, dob, gender, phone_number, email, address) VALUES
     (101, 'Amy', 'Kim', '1997-05-12', 'Female', '081234567890', 'amy.kim@example.com', 'Jl. Merdeka 1'),
@@ -13,6 +14,7 @@ INSERT INTO Patient (patient_id, first_name, last_name, dob, gender, phone_numbe
     (105, 'Linda', 'Wong', '1988-07-12', 'Female', '081234567894', 'linda.wong@example.com', 'Jl. Mangga 5'),
     (106, 'Brian', 'Simanjuntak', '1992-04-10', 'Male', '081234567895', 'brian.simanjuntak@example.com', 'Jl. Bali 6');
 
+
 -- doctors
 INSERT INTO Doctor (doctor_id, specialization_id, first_name, last_name, phone_number, email) values
     (201, 1, 'dr. Agung', 'Putra', '081201234500', 'agungputra@clinic.com'),
@@ -20,12 +22,13 @@ INSERT INTO Doctor (doctor_id, specialization_id, first_name, last_name, phone_n
     (203, 2, 'dr. Siti', 'Hartono', '081201234502', 'sitihartono@clinic.com'),
     (204, 3, 'dr. Katrina', 'Chandra', '081201234505', 'katrina.chandra@clinic.com');
 
+
 -- schedules
 INSERT INTO Schedule (schedule_id, doctor_id, available_day, start_time, end_time, is_booked) values
     (301, 201, 'Monday', '09:00', '09:30', TRUE),
     (302, 201, 'Monday', '09:30', '10:00', TRUE),
-    (303, 201, 'Monday', '10:00', '10:30', FALSE),
-    (304, 201, 'Monday', '10:30', '11:00', FALSE),
+    (303, 201, 'Monday', '10:00', '10:30', TRUE),
+    (304, 201, 'Monday', '10:30', '11:00', TRUE),
     (305, 201, 'Thursday', '13:00', '13:30', FALSE),
     (306, 202, 'Tuesday', '10:00', '10:30', TRUE),
     (307, 202, 'Tuesday', '10:30', '11:00', TRUE),
@@ -34,28 +37,28 @@ INSERT INTO Schedule (schedule_id, doctor_id, available_day, start_time, end_tim
     (310, 203, 'Wednesday', '14:30', '15:00', FALSE),
     (311, 204, 'Friday', '08:30', '09:00', TRUE),
     (312, 204, 'Friday', '09:00', '09:30', FALSE);
-
+    
 -- Appointments
 INSERT INTO Appointment (appointment_id, patient_id, schedule_id, reason_for_visit, appointment_datetime, status) VALUES
-    (401, 101, 301, 'Annual checkup', '2025-11-24 09:00', 'completed'),
-    (402, 104, 302, 'General consultation', '2025-11-24 09:30', 'scheduled'),
-    (403, 102, 306, 'Skin rash evaluation', '2025-11-25 10:00', 'completed'),
-    (404, 106, 307, 'Follow-up', '2025-11-25 10:30', 'completed'),
-    (405, 105, 309, 'Acne treatment', '2025-11-26 14:00', 'completed'),
-    (406, 103, 311, 'Dental cleaning', '2025-11-27 08:30', 'completed');
+    (401, 101, 301, 'Annual checkup', '2025-12-15 09:00', 'completed'),
+    (407, 102, 303, 'Flu symptoms', '2025-11-18 10:00', 'completed'),
+    (408, 102, 304, 'Follow-up flu', '2025-11-25 10:30', 'completed'),
+    (402, 104, 302, 'General consultation', '2025-12-22 09:30', 'scheduled'),
+    (403, 102, 306, 'Skin rash evaluation', '2025-12-17 10:00', 'scheduled'),
+    (404, 106, 307, 'Follow-up', '2025-12-17 10:30', 'scheduled'),
+    (405, 105, 309, 'Acne treatment', '2025-12-18 14:00', 'scheduled'),
+    (406, 103, 311, 'Dental cleaning', '2025-12-20 08:30', 'scheduled');
 
--- Records
+
+-- Records (only for completed appointments)
 INSERT INTO Record (appointment_id, diagnosis, prescription, notes) VALUES
     (401, 'Healthy', 'Multivitamin', 'Routine annual exam, no issues.'),
-    (403, 'Dermatitis', 'Hydrocortisone cream', 'Rash evaluated, mild eczema.'),
-    (404, 'General health', 'Continue medication', 'Follow-up completed successfully.'),
-    (405, 'Acne', 'Benzoyl peroxide', 'Prescribed topical for moderate acne.'),
-    (406, 'Plaque buildup', 'Routine cleaning', 'Dental cleaning successful.');
+    (407, 'Influenza Type A', 'Oseltamivir 75mg, Paracetamol 500mg', 'Rest for 3-5 days. Return if symptoms worsen.'),
+    (408, 'Recovered from flu', 'Continue vitamin C', 'Patient recovered well. No further treatment needed.');
 
--- Invoices
+
+-- Invoices (only for completed appointments)
 INSERT INTO Invoice (appointment_id, amount, issue_date, status) VALUES
-    (401, 150000.00, '2025-11-24', 'paid'),
-    (403, 180000.00, '2025-11-25', 'unpaid'),
-    (404, 120000.00, '2025-11-25', 'unpaid'),
-    (405, 190000.00, '2025-11-26', 'unpaid'),
-    (406, 200000.00, '2025-11-27', 'unpaid');
+    (401, 150000.00, '2025-12-15', 'paid'),
+    (407, 200000.00, '2025-11-18', 'paid'),
+    (408, 120000.00, '2025-11-25', 'unpaid');

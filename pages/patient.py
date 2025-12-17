@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from db_utils import run_query
 from collections import defaultdict
 
@@ -37,6 +37,23 @@ def nav_button(label, view):
     if st.button(label, use_container_width=True):
         st.session_state["patient_view"] = view
         st.rerun()
+
+def get_next_weekday(target_day_name):
+    """Calculate next occurrence of a weekday"""
+    days = {
+        'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3,
+        'Friday': 4, 'Saturday': 5, 'Sunday': 6
+    }
+    
+    today = date.today()
+    today_weekday = today.weekday()
+    target_weekday = days[target_day_name]
+    
+    days_ahead = target_weekday - today_weekday
+    if days_ahead <= 0:  # Target day already passed this week
+        days_ahead += 7
+    
+    return today + timedelta(days=days_ahead)
 
 
 # Public views
@@ -338,20 +355,24 @@ def render_booking_view():
 
     if st.button("Confirm", use_container_width=True):
         try:
+            # ✅ FIXED: Calculate next occurrence of the selected weekday
+            next_date = get_next_weekday(slot['available_day'])
+            appointment_datetime = f"{next_date} {slot['start_time']}"
+            
             run_query(
                 "INSERT INTO Appointment (patient_id, schedule_id, reason_for_visit, appointment_datetime, status) VALUES (%s, %s, %s, %s, 'scheduled')",
                 (
                     st.session_state["logged_in_patient_id"],
                     slot["schedule_id"],
                     reason,
-                    f"2025-12-01 {slot['start_time']}",
+                    appointment_datetime,  # ✅ Now uses calculated date
                 ),
             )
             run_query(
                 "UPDATE Schedule SET is_booked = TRUE WHERE schedule_id = %s",
                 (slot["schedule_id"],),
             )
-            st.success("Appointment booked!")
+            st.success(f"Appointment booked for {next_date.strftime('%A, %B %d, %Y')}!")
             st.balloons()
         except Exception as e:
             st.error(f"Booking failed: {e}")
