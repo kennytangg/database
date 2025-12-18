@@ -6,4 +6,4 @@ This project is about clinic appointment system focusing on the database part. H
 - schema is on `database/schema.sql`
 - pre-data is on `database/data.sql`
   
-<img width="979" height="623" alt="erd" src="https://github.com/user-attachments/assets/9bc1b75c-a506-44b8-aaf6-4867af32a92f" />
+<img width="1218" height="745" alt="ERD" src="https://github.com/user-attachments/assets/45298b2c-2331-4210-bdaa-b34957a5146f" />
