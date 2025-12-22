@@ -66,7 +66,7 @@ JOIN Specialization s ON d.specialization_id = s.specialization_id
 ORDER BY a.appointment_datetime DESC;
 
 
--- 6. Filter by status
+-- 6. Filter appointments by status
 SELECT 
     a.appointment_id,
     a.appointment_datetime,
@@ -108,15 +108,18 @@ SELECT
     a.appointment_id,
     a.appointment_datetime,
     a.reason_for_visit,
-    p.first_name as patient_first,
-    p.last_name as patient_last,
-    d.first_name as doctor_first,
-    d.last_name as doctor_last
+    p.first_name  AS patient_first,
+    p.last_name   AS patient_last,
+    d.first_name  AS doctor_first,
+    d.last_name   AS doctor_last,
+    s.specialization_name,
+    s.consultation_fee
 FROM Appointment a
-JOIN Patient p ON a.patient_id = p.patient_id
-JOIN Schedule sch ON a.schedule_id = sch.schedule_id
-JOIN Doctor d ON sch.doctor_id = d.doctor_id
-LEFT JOIN Invoice i ON a.appointment_id = i.appointment_id
+JOIN Patient p        ON a.patient_id = p.patient_id
+JOIN Schedule sch     ON a.schedule_id = sch.schedule_id
+JOIN Doctor d         ON sch.doctor_id = d.doctor_id
+JOIN Specialization s ON d.specialization_id = s.specialization_id
+LEFT JOIN Invoice i   ON a.appointment_id = i.appointment_id
 WHERE a.status = 'completed' AND i.appointment_id IS NULL
 ORDER BY a.appointment_datetime DESC;
 

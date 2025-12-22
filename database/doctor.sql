@@ -20,9 +20,7 @@ FROM Appointment a
 JOIN Schedule sch ON a.schedule_id = sch.schedule_id
 JOIN Patient p ON a.patient_id = p.patient_id
 WHERE sch.doctor_id = %s 
-  AND a.status = 'scheduled'
-  AND DATE(a.appointment_datetime) = CURDATE()
-ORDER BY a.appointment_datetime;
+  AND a.status = 'scheduled';
 
 
 -- 3. Get patient basic information
